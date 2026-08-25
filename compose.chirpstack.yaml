@@ -1,0 +1,80 @@
+services:
+  chirpstack:
+    image: chirpstack/chirpstack:4
+    command: -c /etc/chirpstack
+    restart: unless-stopped
+    volumes:
+      - ./configuration/chirpstack:/etc/chirpstack
+    environment:
+      MQTT_BROKER_HOST: mosquitto
+      REDIS_HOST: redis
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PASSWORD: ${CHIRPSTACK_PG_PASSWORD:?}
+      CHIRPSTACK_SECRET: ${CHIRPSTACK_SECRET:?}
+      INTEGRATION_MQTT_SERVER: tcp://mqtt:1883
+      INTEGRATION_MQTT_USERNAME: ${MQTT_CHIRPSTACK_USER:?}
+      INTEGRATION_MQTT_PASSWORD: ${MQTT_CHIRPSTACK_PASSWORD:?}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+      mqtt:
+        condition: service_started
+
+  chirpstack-gateway-bridge:
+    image: chirpstack/chirpstack-gateway-bridge:4
+    restart: unless-stopped
+    volumes:
+      - ./configuration/chirpstack-gateway-bridge:/etc/chirpstack-gateway-bridge
+    environment:
+      INTEGRATION__MQTT__EVENT_TOPIC_TEMPLATE: "eu868/gateway/{{ .GatewayID }}/event/{{ .EventType }}"
+      INTEGRATION__MQTT__STATE_TOPIC_TEMPLATE: "eu868/gateway/{{ .GatewayID }}/state/{{ .StateType }}"
+      INTEGRATION__MQTT__COMMAND_TOPIC_TEMPLATE: "eu868/gateway/{{ .GatewayID }}/command/#"
+    ports:
+      - "1700:1700/udp"
+    depends_on:
+      mosquitto:
+        condition: service_started
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./configuration/mosquitto/config/:/mosquitto/config/
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    volumes:
+      - ./configuration/postgresql/initdb:/docker-entrypoint-initdb.d
+      - chirpstack_postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: chirpstack
+      POSTGRES_PASSWORD: ${CHIRPSTACK_PG_PASSWORD:?}
+      POSTGRES_DB: chirpstack
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "chirpstack"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: redis-server --save 300 1 --save 60 100 --appendonly no
+    volumes:
+      - chirpstack_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  chirpstack_postgres:
+  chirpstack_redis:

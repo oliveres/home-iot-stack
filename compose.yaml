@@ -1,0 +1,8 @@
+name: home-iot
+
+include:
+  - compose.chirpstack.yaml
+  - compose.mqtt.yaml
+  - compose.timescaledb.yaml
+  - compose.grafana.yaml
+  - compose.nodered.yaml

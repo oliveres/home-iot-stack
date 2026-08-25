@@ -1,0 +1,24 @@
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg18
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${TSDB_USER:?}
+      POSTGRES_PASSWORD: ${TSDB_PASSWORD:?}
+      POSTGRES_DB: ${TSDB_DB:?}
+      GRAFANA_DB_USER: ${GRAFANA_DB_USER:-grafana}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?}
+      TZ: ${TZ:-Europe/Prague}
+    volumes:
+      - ./configuration/timescaledb/initdb:/docker-entrypoint-initdb.d
+      - timescaledb_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  timescaledb_data:
