@@ -119,7 +119,8 @@ Print the passwords any time with `grep MQTT_ .env`.
 
 **4. HTTPS and DNS**
 
-Grafana and Node-RED sit behind Caddy on subdomains of `DOMAIN`. Their
+Grafana, Node-RED and ChirpStack's web UI sit behind Caddy on subdomains
+of `DOMAIN`. Their
 records point at the VM's private address, so the ACME HTTP-01 challenge
 can never reach them — hence DNS-01, which proves control of the domain
 by writing a TXT record instead. That is also why Caddy is built from
@@ -131,7 +132,12 @@ In DigitalOcean, add an A record per service pointing at the VM:
 ```
 grafana.<domain>   A   <private IP of the VM>
 nodered.<domain>   A   <private IP of the VM>
+mqtt.<domain>      A   <private IP of the VM>
 ```
+
+`mqtt.<domain>` does double duty: Caddy serves ChirpStack's web UI on it
+over HTTPS, and MQTT clients use the same name for the plain broker on
+1883, which never touches Caddy.
 
 Then create an API token with the custom scope `domain` (`read` and
 `update` are enough) and put it in `.env` as `DO_API_TOKEN`, together
@@ -249,7 +255,7 @@ the LoRaWAN regional parameters are revised.
   challenge providers are compiled into the binary. The Caddyfile reads
   `{$DOMAIN}` at load time and the API token as `{env.DO_API_TOKEN}` at
   runtime, so neither the domain nor the token is in the repository. The
-  direct ports (3000, 1880) stay published as a way back in.
+  direct ports (3000, 1880, 8080) stay published as a way back in.
 - Two Mosquitto containers: `mosquitto` inside the ChirpStack stack only
   carries traffic between the gateway bridge and the server (no port, no
   auth, upstream config untouched), while `mqtt` is the main home broker

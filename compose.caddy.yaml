@@ -19,6 +19,8 @@ services:
         condition: service_started
       nodered:
         condition: service_started
+      chirpstack:
+        condition: service_started
 
 volumes:
   caddy_data:

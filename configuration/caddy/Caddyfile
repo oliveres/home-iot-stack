@@ -17,3 +17,10 @@ nodered.{$DOMAIN} {
 	import dns
 	reverse_proxy nodered:1880
 }
+
+# ChirpStack's web UI. The same hostname also serves plain MQTT on 1883,
+# which bypasses Caddy entirely.
+mqtt.{$DOMAIN} {
+	import dns
+	reverse_proxy chirpstack:8080
+}
