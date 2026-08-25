@@ -1,0 +1,19 @@
+{
+	email {$ACME_EMAIL}
+}
+
+(dns) {
+	tls {
+		dns digitalocean {env.DO_API_TOKEN}
+	}
+}
+
+grafana.{$DOMAIN} {
+	import dns
+	reverse_proxy grafana:3000
+}
+
+nodered.{$DOMAIN} {
+	import dns
+	reverse_proxy nodered:1880
+}

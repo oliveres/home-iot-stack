@@ -6,3 +6,4 @@ include:
   - compose.timescaledb.yaml
   - compose.grafana.yaml
   - compose.nodered.yaml
+  - compose.caddy.yaml

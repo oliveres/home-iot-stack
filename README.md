@@ -16,6 +16,7 @@ mapping 1:1 onto upstream `chirpstack/chirpstack-docker`.
 | `compose.timescaledb.yaml` | TimescaleDB |
 | `compose.grafana.yaml` | Grafana |
 | `compose.nodered.yaml` | Node-RED |
+| `compose.caddy.yaml` | Caddy, HTTPS reverse proxy |
 | `bootstrap-upstream.sh` | fetches upstream configs, writes `UPSTREAM` |
 | `UPSTREAM` | upstream commit the configs came from |
 
@@ -116,15 +117,38 @@ adding the pair of lines to `.env` and running the same command again; a
 running broker picks up the change on `docker compose kill -s HUP mqtt`.
 Print the passwords any time with `grep MQTT_ .env`.
 
-**4. Start**
+**4. HTTPS and DNS**
+
+Grafana and Node-RED sit behind Caddy on subdomains of `DOMAIN`. Their
+records point at the VM's private address, so the ACME HTTP-01 challenge
+can never reach them — hence DNS-01, which proves control of the domain
+by writing a TXT record instead. That is also why Caddy is built from
+`configuration/caddy/Dockerfile`: the DNS providers are compiled-in
+modules and the stock `caddy:2` image carries none of them.
+
+In DigitalOcean, add an A record per service pointing at the VM:
+
+```
+grafana.<domain>   A   <private IP of the VM>
+nodered.<domain>   A   <private IP of the VM>
+```
+
+Then create an API token with the custom scope `domain` (`read` and
+`update` are enough) and put it in `.env` as `DO_API_TOKEN`, together
+with the second-level domain in `DOMAIN`. Note the scope covers *every*
+domain on the account — DigitalOcean cannot narrow a token down to one
+zone.
+
+**5. Start**
 
 ```bash
 docker compose up -d
 ```
 
 Then change ChirpStack's `admin/admin` password on `:8080` right away.
+Caddy is built on the first `up`, which takes a minute.
 
-**5. Device profiles** (optional)
+**6. Device profiles** (optional)
 
 The catalogue from `chirpstack/chirpstack-device-profiles`. The import
 runs the schema migrations itself and only needs postgres reachable — the
@@ -148,6 +172,7 @@ Profiles can be created by hand in the web UI instead.
 | 1880 | Node-RED |
 | 3000 | Grafana |
 | 5432 | TimescaleDB |
+| 80, 443 | Caddy |
 
 ChirpStack's internal postgres, redis and mosquitto are not published.
 
@@ -220,6 +245,11 @@ the LoRaWAN regional parameters are revised.
   read-only role, created by `initdb/20-grafana-role.sh` on the database's
   first start; `TSDB_USER` is the owner and belongs to the writer
   (Node-RED).
+- Caddy is built locally (`configuration/caddy/Dockerfile`) because DNS
+  challenge providers are compiled into the binary. The Caddyfile reads
+  `{$DOMAIN}` at load time and the API token as `{env.DO_API_TOKEN}` at
+  runtime, so neither the domain nor the token is in the repository. The
+  direct ports (3000, 1880) stay published as a way back in.
 - Two Mosquitto containers: `mosquitto` inside the ChirpStack stack only
   carries traffic between the gateway bridge and the server (no port, no
   auth, upstream config untouched), while `mqtt` is the main home broker
