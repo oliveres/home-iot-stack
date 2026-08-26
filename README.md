@@ -57,12 +57,8 @@ sudo apt install -y docker-ce docker-ce-cli containerd.io \
 ```
 
 ```bash
-sudo usermod -aG docker $USER
+sudo usermod -aG docker $USER # Log out and log in again to take effect.
 ```
-
-Then log out and back in so the group membership takes effect (`id -nG`
-has to list `docker`). Without it every `docker` command fails with
-permission denied on the socket.
 
 **1. Repository**
 
