@@ -14,6 +14,10 @@ fi
 
 install -m 600 /dev/null .env
 
+# Keep the terminal on fd 3: the loop's stdin is the template, so <?question>
+# markers have to read their answers from somewhere else.
+exec 3<&0
+
 while IFS= read -r line; do
 	case "$line" in
 	[A-Z]*'=<?'*'>')
@@ -32,6 +36,6 @@ while IFS= read -r line; do
 		printf '%s\n' "$line"
 		;;
 	esac
-done < .env.example 3<&0 > .env
+done < .env.example > .env
 
 printf 'Wrote .env\n' >&2
