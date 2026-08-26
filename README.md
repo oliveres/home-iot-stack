@@ -103,6 +103,9 @@ in `DOMAIN`.
 ./bootstrap-upstream.sh   # fetches ChirpStack's upstream configs
 ```
 
+Keep the Cloudflare token from step 2 at hand — the script asks for it,
+and Cloudflare only ever shows a token once.
+
 `setup-env.sh` fills in what `.env.example` marks: `<command>` becomes
 that command's output, `<?question>` is asked on the terminal. Unmarked
 lines pass through, so `TZ` and the account names keep their values.
