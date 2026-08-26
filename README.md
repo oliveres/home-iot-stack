@@ -151,6 +151,7 @@ Print the passwords any time with `grep MQTT_ .env`.
 **5. Start**
 
 ```bash
+cd ~/home-iot-stack
 docker compose up -d
 ```
 
