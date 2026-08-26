@@ -127,7 +127,9 @@ by writing a TXT record instead. That is also why Caddy is built from
 `configuration/caddy/Dockerfile`: the DNS providers are compiled-in
 modules and the stock `caddy:2` image carries none of them.
 
-In DigitalOcean, add an A record per service pointing at the VM:
+In Cloudflare's DNS tab, add an A record per service pointing at the VM.
+Set each one to **DNS only** (grey cloud) — proxying a private address
+through Cloudflare cannot work:
 
 ```
 grafana.<domain>   A   <private IP of the VM>
@@ -139,11 +141,12 @@ mqtt.<domain>      A   <private IP of the VM>
 over HTTPS, and MQTT clients use the same name for the plain broker on
 1883, which never touches Caddy.
 
-Then create an API token with the custom scope `domain` (`read` and
-`update` are enough) and put it in `.env` as `DO_API_TOKEN`, together
-with the second-level domain in `DOMAIN`. Note the scope covers *every*
-domain on the account — DigitalOcean cannot narrow a token down to one
-zone.
+Then create the API token under My Profile - API Tokens - Create Token,
+starting from the **Edit zone DNS** template. It needs `Zone:Zone:Read`
+and `Zone:DNS:Edit`, and under Zone Resources pick **Include - Specific
+zone - this domain**, so the token cannot touch any other zone on the
+account. Put it in `.env` as `CF_API_TOKEN` and the second-level domain
+in `DOMAIN`.
 
 **5. Start**
 
@@ -253,7 +256,7 @@ the LoRaWAN regional parameters are revised.
   (Node-RED).
 - Caddy is built locally (`configuration/caddy/Dockerfile`) because DNS
   challenge providers are compiled into the binary. The Caddyfile reads
-  `{$DOMAIN}` at load time and the API token as `{env.DO_API_TOKEN}` at
+  `{$DOMAIN}` at load time and the API token as `{env.CF_API_TOKEN}` at
   runtime, so neither the domain nor the token is in the repository. The
   direct ports (3000, 1880, 8080) stay published as a way back in.
 - Two Mosquitto containers: `mosquitto` inside the ChirpStack stack only
