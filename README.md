@@ -165,6 +165,7 @@ server does not have to be up. It is an upsert, so the same commands also
 serve to refresh the profiles later.
 
 ```bash
+cd ~/home-iot-stack
 rm -rf /tmp/dp
 git clone --depth 1 https://github.com/chirpstack/chirpstack-device-profiles /tmp/dp
 docker compose run --rm -v /tmp/dp:/dp chirpstack -c /etc/chirpstack import-device-profiles -d /dp
