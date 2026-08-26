@@ -17,6 +17,7 @@ mapping 1:1 onto upstream `chirpstack/chirpstack-docker`.
 | `compose.grafana.yaml` | Grafana |
 | `compose.nodered.yaml` | Node-RED |
 | `compose.caddy.yaml` | Caddy, HTTPS reverse proxy |
+| `setup-env.sh` | writes `.env` from `.env.example` |
 | `bootstrap-upstream.sh` | fetches upstream configs, writes `UPSTREAM` |
 | `UPSTREAM` | upstream commit the configs came from |
 
@@ -64,60 +65,7 @@ git clone https://github.com/oliveres/home-iot-stack ~/home-iot-stack
 cd ~/home-iot-stack
 ```
 
-**2. Configuration**
-
-Values written in `.env.example` as `<command>` are passwords and keys —
-this substitutes each one with that command's output:
-
-```bash
-install -m 600 /dev/null .env
-while IFS= read -r line; do
-  case "$line" in
-    [A-Z]*'=<'*'>')
-      cmd=${line#*=<}; cmd=${cmd%>}
-      printf '%s=%s\n' "${line%%=*}" "$(eval "$cmd")" ;;
-    *) printf '%s\n' "$line" ;;
-  esac
-done < .env.example > .env
-
-./bootstrap-upstream.sh   # fetches ChirpStack's upstream configs
-```
-
-Lines without `<>` pass through untouched, so `TZ` and the account names
-keep their values. `=+/` is stripped from passwords so they cannot break
-connection strings.
-
-**3. Home broker accounts**
-
-Mosquitto only reads passwords from a `password_file` as PBKDF2-SHA512
-hashes — an environment variable will not do. This builds
-`configuration/mqtt/passwd` from every `MQTT_*_USER` and
-`MQTT_*_PASSWORD` pair in `.env`.
-
-```bash
-docker run --rm --env-file .env -v ./configuration/mqtt:/c eclipse-mosquitto:2 sh -c '
-  : > /c/passwd
-  for p in $(env | sed -n "s/^\(MQTT_[A-Z0-9_]*\)_USER=.*/\1/p"); do
-    printf "%s:%s\n" "$(printenv "${p}_USER")" "$(printenv "${p}_PASSWORD")" >> /c/passwd
-  done
-  mosquitto_passwd -U /c/passwd
-  chown 1883:1883 /c/passwd
-  chmod 600 /c/passwd
-'
-```
-
-The passwords land in the file as plaintext first and `mosquitto_passwd -U`
-hashes them in place, so none of them ever appears on a command line.
-Owner 1883 is mosquitto inside the container — without it the broker logs
-a warning on every load and future versions will refuse the file.
-
-The file is gitignored, hashes of real passwords do not belong in the
-repository, and the broker will not start without it. Add an account by
-adding the pair of lines to `.env` and running the same command again; a
-running broker picks up the change on `docker compose kill -s HUP mqtt`.
-Print the passwords any time with `grep MQTT_ .env`.
-
-**4. HTTPS and DNS**
+**2. DNS and HTTPS**
 
 Grafana, Node-RED and ChirpStack's web UI sit behind Caddy on subdomains
 of `DOMAIN`. Their
@@ -147,6 +95,49 @@ and `Zone:DNS:Edit`, and under Zone Resources pick **Include - Specific
 zone - this domain**, so the token cannot touch any other zone on the
 account. Put it in `.env` as `CF_API_TOKEN` and the second-level domain
 in `DOMAIN`.
+
+**3. Configuration**
+
+```bash
+./setup-env.sh            # writes .env, asks for the domain and the token
+./bootstrap-upstream.sh   # fetches ChirpStack's upstream configs
+```
+
+`setup-env.sh` fills in what `.env.example` marks: `<command>` becomes
+that command's output, `<?question>` is asked on the terminal. Unmarked
+lines pass through, so `TZ` and the account names keep their values.
+`=+/` is stripped from generated passwords so they cannot break
+connection strings. The script refuses to run if `.env` already exists.
+
+**4. Home broker accounts**
+
+Mosquitto only reads passwords from a `password_file` as PBKDF2-SHA512
+hashes — an environment variable will not do. This builds
+`configuration/mqtt/passwd` from every `MQTT_*_USER` and
+`MQTT_*_PASSWORD` pair in `.env`.
+
+```bash
+docker run --rm --env-file .env -v ./configuration/mqtt:/c eclipse-mosquitto:2 sh -c '
+  : > /c/passwd
+  for p in $(env | sed -n "s/^\(MQTT_[A-Z0-9_]*\)_USER=.*/\1/p"); do
+    printf "%s:%s\n" "$(printenv "${p}_USER")" "$(printenv "${p}_PASSWORD")" >> /c/passwd
+  done
+  mosquitto_passwd -U /c/passwd
+  chown 1883:1883 /c/passwd
+  chmod 600 /c/passwd
+'
+```
+
+The passwords land in the file as plaintext first and `mosquitto_passwd -U`
+hashes them in place, so none of them ever appears on a command line.
+Owner 1883 is mosquitto inside the container — without it the broker logs
+a warning on every load and future versions will refuse the file.
+
+The file is gitignored, hashes of real passwords do not belong in the
+repository, and the broker will not start without it. Add an account by
+adding the pair of lines to `.env` and running the same command again; a
+running broker picks up the change on `docker compose kill -s HUP mqtt`.
+Print the passwords any time with `grep MQTT_ .env`.
 
 **5. Start**
 

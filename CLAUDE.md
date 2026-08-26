@@ -12,7 +12,7 @@ Everything — README, code, configs, comments — is in English.
 
 `compose.yaml` contains only `include:` of per-service compose files (project name `home-iot`). One compose file per service, except `compose.chirpstack.yaml`, which intentionally holds all five ChirpStack containers (chirpstack, gateway-bridge, mosquitto, postgres, redis) so it maps 1:1 to upstream `chirpstack/chirpstack-docker`.
 
-All secrets live in `.env` (from `.env.example`) and are injected via compose `environment:`. `.env` and `configuration/mqtt/passwd` are gitignored.
+All secrets live in `.env`, generated from `.env.example` by `setup-env.sh` (`<command>` markers are executed, `<?question>` markers are prompted), and injected via compose `environment:`. `.env` and `configuration/mqtt/passwd` are gitignored.
 
 ## Two brokers — don't confuse them
 

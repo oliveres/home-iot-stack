@@ -8,7 +8,6 @@ services:
     environment:
       DOMAIN: ${DOMAIN:?}
       CF_API_TOKEN: ${CF_API_TOKEN:?}
-      ACME_EMAIL: ${ACME_EMAIL:-}
       TZ: ${TZ:-Europe/Prague}
     volumes:
       - ./configuration/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
