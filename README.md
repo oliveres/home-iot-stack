@@ -118,7 +118,8 @@ hashes — an environment variable will not do. This builds
 
 ```bash
 docker run --rm --env-file .env -v ./configuration/mqtt:/c eclipse-mosquitto:2 sh -c '
-  : > /c/passwd
+  rm -f /c/passwd
+  touch /c/passwd
   chmod 600 /c/passwd
   for p in $(env | sed -n "s/^\(MQTT_[A-Z0-9_]*\)_USER=.*/\1/p"); do
     printf "%s:%s\n" "$(printenv "${p}_USER")" "$(printenv "${p}_PASSWORD")" >> /c/passwd
@@ -130,10 +131,11 @@ docker run --rm --env-file .env -v ./configuration/mqtt:/c eclipse-mosquitto:2 s
 
 The passwords land in the file as plaintext first and `mosquitto_passwd -U`
 hashes them in place, so none of them ever appears on a command line. The
-mode is set before anything is written, otherwise `mosquitto_passwd`
-warns about a world-readable file. Owner 1883 is mosquitto inside the
-container — without it the broker logs a warning on every load and future
-versions will refuse the file.
+file is recreated rather than truncated, and its mode set, before
+anything is written: `mosquitto_passwd` warns about a file that is
+world-readable or not owned by the user running it. The final owner 1883
+is mosquitto inside the container — without it the broker logs the same
+warning on every load, and future versions will refuse the file.
 
 The file is gitignored, hashes of real passwords do not belong in the
 repository, and the broker will not start without it. Add an account by
