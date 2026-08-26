@@ -160,9 +160,10 @@ Caddy is built on the first `up`, which takes a minute.
 The catalogue from `chirpstack/chirpstack-device-profiles`. The import
 runs the schema migrations itself and only needs postgres reachable — the
 server does not have to be up. It is an upsert, so the same commands also
-serve to refresh the profiles later (delete the old `/tmp/dp` first).
+serve to refresh the profiles later.
 
 ```bash
+rm -rf /tmp/dp
 git clone --depth 1 https://github.com/chirpstack/chirpstack-device-profiles /tmp/dp
 docker compose run --rm -v /tmp/dp:/dp chirpstack -c /etc/chirpstack import-device-profiles -d /dp
 ```
