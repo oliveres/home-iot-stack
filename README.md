@@ -28,22 +28,25 @@ the ownership of the broker password file.
 
 **0. Docker**
 
-From the official repository, not Debian's `docker.io` — that ships
-Engine 26.1.5 and stays there until the release goes out of support.
+From the official repository, not Ubuntu's `docker.io` — that one
+lives in universe (community-maintained, no Canonical support),
+ships Engine 29.1 and holds that line for the whole LTS, and
+packages Compose as the conflicting `docker-compose-v2` instead of
+the vendor plugin.
 
 ```bash
 sudo apt update
 sudo apt install -y ca-certificates curl
 sudo install -m 0755 -d /etc/apt/keyrings
-sudo curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
 ```
 
 ```bash
 sudo tee /etc/apt/sources.list.d/docker.sources >/dev/null <<EOF
 Types: deb
-URIs: https://download.docker.com/linux/debian
-Suites: $(. /etc/os-release && echo "$VERSION_CODENAME")
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
 Components: stable
 Architectures: $(dpkg --print-architecture)
 Signed-By: /etc/apt/keyrings/docker.asc
@@ -233,6 +236,26 @@ git commit -am "sync upstream config"
 so only read the upstream version out of the diff and port changes by
 hand. The substantive changes tend to be in `region_eu868.toml` whenever
 the LoRaWAN regional parameters are revised.
+
+## Notes — Ubuntu host
+
+The VM runs Ubuntu Server 26.04 LTS (provisioning: `oliveres/homelab`).
+
+- needrestart restarts affected services silently during any apt
+  operation (no prompts since 24.04). `docker.service` is excluded
+  upstream, so containers keep running; `containerd` may restart —
+  containers survive that via their shims.
+- unattended-upgrades is on by default and scoped to Ubuntu security
+  pockets — it provably never touches `docker-ce` (`Origin: Docker`
+  does not match) and never reboots by itself. Kernel updates just
+  set `/run/reboot-required` (MOTD nags); every service here has
+  `restart: unless-stopped`, so a manual reboot brings the stack
+  back.
+- On first start dockerd logs "detected 127.0.0.53 nameserver,
+  assuming systemd-resolved" and hands containers the upstream DHCP
+  servers from `/run/systemd/resolve/resolv.conf` — expected. The
+  detection runs once: after changing the host's DNS, restart
+  docker.
 
 ## Notes
 
