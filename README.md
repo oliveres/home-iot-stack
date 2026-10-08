@@ -290,3 +290,59 @@ The VM runs Ubuntu Server 26.04 LTS (provisioning: `oliveres/homelab`).
   auth, upstream config untouched), while `mqtt` is the main home broker
   with passwords on 1883. ChirpStack's `[integration.mqtt]` points at
   `mqtt`, so uplinks land where Node-RED is.
+
+## Upgrading
+
+Run on the VM from the repository directory. Every service except Caddy
+uses a stock image with a floating tag, so an upgrade is a pull plus a
+recreate of that one container — nothing is built and the data stays in
+the named volumes:
+
+```bash
+docker compose pull <service>
+docker compose up -d <service>
+```
+
+`up -d` alone does not upgrade anything; without the `pull` it keeps the
+image already on the host. Leave out `<service>` to upgrade everything.
+
+| Service | Tag | Upgrade |
+|---|---|---|
+| `grafana` | `grafana-oss:latest` | pull + up |
+| `nodered` | `node-red:latest` | pull + up |
+| `chirpstack`, `chirpstack-gateway-bridge` | `4` | pull + up |
+| `postgres`, `redis`, `mosquitto`, `mqtt` | `17-alpine`, `8-alpine`, `2` | pull + up |
+| `timescaledb` | `latest-pg18` | pull + up, then update the extension |
+| `caddy` | built from `caddy:2` | rebuild |
+
+- Grafana and Node-RED: `latest` can cross a major version — read the
+  release notes first. The Node-RED palette nodes live in the
+  `nodered_data` volume and are not touched by an image upgrade; update
+  them from the editor's Palette Manager.
+- ChirpStack applies its database migrations on start. Check
+  `git upstream-diff` (see [Tracking upstream](#tracking-upstream)) for
+  config changes that came with the new release.
+- The other tags are pinned to a major version, so a pull never crosses
+  one. A PostgreSQL major upgrade (`17` → `18`, `pg18` → `pg19`) needs a
+  dump and restore, not just a new tag.
+- TimescaleDB: a new image ships the new extension version, but the
+  database keeps the old one until it is updated. `ALTER EXTENSION` has to
+  be the first command of a fresh session, hence `psql -X`:
+
+  ```bash
+  docker compose exec timescaledb sh -c \
+    'psql -X -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER EXTENSION timescaledb UPDATE;"'
+  ```
+
+  `\dx` in `psql` shows the installed version.
+- Caddy: the Cloudflare DNS module is compiled into the binary, so a new
+  Caddy release means a rebuild. `--pull` refreshes the `caddy:2-builder`
+  and `caddy:2` base images:
+
+  ```bash
+  docker compose build --pull caddy
+  docker compose up -d caddy
+  ```
+
+Unused old images pile up after upgrades; `docker image prune` removes
+the dangling ones.
